@@ -1,0 +1,7 @@
+/aqtpserver
+/aqtpserver.exe
+/dist/
+*.test
+*.test.exe
+/coverage.out
+.DS_Store
