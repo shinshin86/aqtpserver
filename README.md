@@ -9,6 +9,18 @@ including support for `@aituber-onair/voice`'s `openaiCompatible` engine.
 aqtpserver does not include, download, or redistribute AquesTalkPlayer, its
 engines, dictionaries, or voice data. The Web version is not supported.
 
+## About AquesTalkPlayer
+
+[AquesTalkPlayer](https://www.a-quest.com/products/aquestalkplayer.html) is a
+speech synthesis app developed by AQUEST Corp. It combines the AquesTalk1,
+AquesTalk2, and AquesTalk10 engines with AqKanji2Koe for reading Japanese text,
+including the voices commonly known as "yukkuri" voices. AQUEST provides Windows,
+macOS, and Web versions; aqtpserver uses only the Windows and macOS desktop apps.
+
+The speech synthesis technology is AQUEST's work, and we thank AQUEST for making
+it available. Download AquesTalkPlayer from the official product page linked
+above and follow its usage terms.
+
 ## Prerequisites
 
 - macOS 14 or later, or Windows. Server release binaries target macOS and Windows
@@ -243,12 +255,39 @@ verify HTTP and process behavior, not voice quality.
 
 ## License
 
-aqtpserver is distributed under the [MIT License](LICENSE). It is not affiliated
-with AQUEST. That license does not grant rights to AquesTalkPlayer or its data.
+aqtpserver is distributed under the [MIT License](LICENSE). It is an unofficial
+tool and is not affiliated with AQUEST Corp. That license does not grant rights to AquesTalkPlayer or its data.
+
+### How aqtpserver uses AquesTalkPlayer
+
+- aqtpserver contains no AQUEST code, libraries, DLLs, dictionaries, or voice
+  data, and does not use AQUEST's SDKs. It is not an app that embeds and
+  redistributes AQUEST's libraries.
+- It only starts the AquesTalkPlayer that you downloaded and installed yourself,
+  through the command-line interface described in AQUEST's official manuals
+  ([Windows](https://www.a-quest.com/products/aquestalkplayer_man.html),
+  [macOS](https://www.a-quest.com/products/aquestalkplayer_mac_man.html)). The
+  [product page](https://www.a-quest.com/products/aquestalkplayer.html) states
+  that this interface can be used for batch processing and for calls from
+  external apps.
+- It runs on your own computer and accepts connections only from that computer.
 
 [AquesTalkPlayer's terms](https://www.a-quest.com/products/aquestalkplayer.html)
 allow free use only for personal non-commercial use. Other uses require the
-applicable commercial-use license, obtained and configured by the user. The
+user to purchase AQUEST's usage license (for commercial content) and set its
+license key in the player. The
 terms prohibit making the downloaded player available to third parties over a
 network; this is why aqtpserver is restricted to loopback. Use it only with your
 own installed player and follow the current AQUEST terms.
+
+Consult AQUEST's official [personal use rules](https://www.a-quest.com/licence_free.html),
+[license overview](https://www.a-quest.com/licence.html), and
+[video and streaming guidance](https://www.a-quest.com/licence_video.html).
+A usage license is required for monetized videos or streams, for use by
+companies, schools, or other organizations, and for content that promotes
+products or services (even when that content earns no advertising revenue).
+
+AQUEST's [license terms](https://www.a-quest.com/licence.html) also prohibit using
+generated audio to train AI and distributing, publishing, or allowing third
+parties to use that audio, the trained models, or resulting speech synthesis
+systems. Users are responsible for checking and following AQUEST's current terms.

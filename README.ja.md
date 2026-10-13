@@ -9,13 +9,26 @@ OpenAI 互換の `POST /v1/audio/speech` で WAV を返し、
 AquesTalkPlayer 本体、音声合成エンジン、辞書、音声データの同梱・ダウンロード・
 再配布は行いません。AquesTalkPlayer Web は対象外です。
 
+## AquesTalkPlayer について
+
+[AquesTalkPlayer](https://www.a-quest.com/products/aquestalkplayer.html) は、
+株式会社アクエスト（AQUEST）が開発する音声合成アプリです。AquesTalk1・AquesTalk2・
+AquesTalk10 と、日本語の読み上げに使う AqKanji2Koe を組み合わせ、
+「ゆっくりボイス」として知られる声などを利用できます。Windows・macOS・Web 版があり、
+aqtpserver が使用するのは Windows・macOS のデスクトップ版です。
+
+音声合成技術を開発・提供するアクエスト社に感謝します。
+AquesTalkPlayer は上記の公式製品ページからダウンロードし、同社の利用条件に従って
+ご利用ください。
+
 ## 利用前の準備
 
 - macOS 14 以降、または Windows が必要です。サーバーの配布対象は両 OS の
   amd64 / arm64 です。AquesTalkPlayer 自体も利用環境で動作する必要があります。
 - [AquesTalkPlayer](https://www.a-quest.com/products/aquestalkplayer.html) を
   ご自身でインストールし、一度 GUI を開いて設定してください。
-- 同梱の `れいむ`、`まりさ` などのプリセットをそのまま使えます。
+- AquesTalkPlayer に最初から用意されている `れいむ`、`まりさ` などのプリセットを
+  そのまま使えます。
   GUI にあるプリセット名なら、自分で作成したものも `voice` に指定できます。
   声種・話速・音量・高さを変える場合は、GUI で編集するか `slow` などのプリセットを
   追加してください。個別指定する CLI 引数はありません。
@@ -245,12 +258,36 @@ Windows での実行、PowerShell インストーラー、GitHub Actions 上の 
 
 ## ライセンス
 
-aqtpserver は [MIT License](LICENSE) で公開しています。AQUEST とは関係のない
-プロジェクトです。このライセンスは AquesTalkPlayer 本体やデータの利用権を含みません。
+aqtpserver は [MIT License](LICENSE) で公開しています。株式会社アクエストの
+公式プロジェクトではなく、同社とは関係のない非公式のツールです。このライセンスは AquesTalkPlayer 本体やデータの利用権を含みません。
+
+### aqtpserver による AquesTalkPlayer の利用方法
+
+- aqtpserver には、アクエスト社のコード・ライブラリ・DLL・辞書・音声データは
+  一切含まれておらず、同社の SDK も使用していません。同社のライブラリを
+  組み込んで配布するアプリではありません。
+- 利用者が自身でダウンロード・インストールした AquesTalkPlayer を、同社の公式
+  マニュアル（[Windows 版](https://www.a-quest.com/products/aquestalkplayer_man.html)、
+  [macOS 版](https://www.a-quest.com/products/aquestalkplayer_mac_man.html)）に
+  記載されたコマンドラインで起動するだけです。このコマンドラインについて、
+  [製品ページ](https://www.a-quest.com/products/aquestalkplayer.html)には
+  「バッチ処理や外部アプリからの呼び出しも可能です」と記載されています。
+- 利用者自身の PC 上で動作し、同じ PC からの接続のみを受け付けます。
 
 [AquesTalkPlayer の利用条件](https://www.a-quest.com/products/aquestalkplayer.html) では、
-無償利用は個人の非営利利用に限られます。それ以外の利用では、利用者自身が該当する
-商用の使用ライセンスを取得し、設定してください。ダウンロードしたアプリを
+無償利用は個人の非営利利用に限られます。それ以外の利用では、利用者自身が「使用ライセンス
+（商用コンテンツ向け）」を購入し、ライセンスキーを設定してください。ダウンロードしたアプリを
 ネットワーク経由で第三者に使用させることは禁止されています。
 そのため、このサーバーはループバック接続に限定しています。
 ご自身のインストール済みアプリで使用し、AQUEST の最新の利用条件に従ってください。
+
+公式の [個人利用規定](https://www.a-quest.com/licence_free.html)、
+[ライセンス案内](https://www.a-quest.com/licence.html)、
+[動画・配信での利用案内](https://www.a-quest.com/licence_video.html) を確認してください。
+収益化する動画・配信、会社・学校・団体での利用、商品やサービスの宣伝を目的とする
+コンテンツ（広告収入がない場合を含む）には、使用ライセンスが必要です。
+
+また、[公式のライセンス条件](https://www.a-quest.com/licence.html) では、生成した音声を
+AI 等の学習に使い、その音声データ・学習済みモデル・新たな音声合成システムを
+第三者に配布・公開・使用させることを禁止しています。
+最新の利用条件を確認し、遵守する責任は利用者にあります。
