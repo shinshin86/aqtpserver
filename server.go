@@ -10,6 +10,7 @@ import (
 	"log"
 	"mime"
 	"net/http"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -66,7 +67,8 @@ func newServer(cfg serverConfig, synth speechSynthesizer, logger *log.Logger) *s
 
 type statusWriter struct {
 	http.ResponseWriter
-	status int
+	status   int
+	headOnly bool
 }
 
 func (w *statusWriter) WriteHeader(status int) {
@@ -81,19 +83,25 @@ func (w *statusWriter) Write(body []byte) (int, error) {
 	if w.status == 0 {
 		w.WriteHeader(http.StatusOK)
 	}
+	if w.headOnly {
+		return len(body), nil
+	}
 	return w.ResponseWriter.Write(body)
 }
 
 func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
-	recorded := &statusWriter{ResponseWriter: w}
+	recorded := &statusWriter{ResponseWriter: w, headOnly: r.Method == http.MethodHead}
 	w = recorded
-	route, method := r.URL.Path, ""
+	route := r.URL.Path
+	var methods []string
 	switch route {
+	case "/":
+		methods = []string{http.MethodGet, http.MethodHead}
 	case "/health", "/v1/models":
-		method = http.MethodGet
+		methods = []string{http.MethodGet}
 	case "/v1/audio/speech":
-		method = http.MethodPost
+		methods = []string{http.MethodPost}
 	default:
 		route = "(unknown)"
 	}
@@ -118,7 +126,7 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Set("Access-Control-Allow-Origin", origin)
 	}
-	if method == "" {
+	if len(methods) == 0 {
 		writeError(w, &apiError{Status: http.StatusNotFound, Message: "Endpoint not found.", Type: "invalid_request_error", Code: "not_found"})
 		return
 	}
@@ -126,7 +134,7 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Vary", "Access-Control-Request-Method")
 		w.Header().Add("Vary", "Access-Control-Request-Headers")
 		requested := r.Header.Get("Access-Control-Request-Method")
-		if requested != "" && requested != method {
+		if requested != "" && !slices.Contains(methods, requested) {
 			writeError(w, invalidRequest("Requested CORS method is not supported for this endpoint.", "", "invalid_preflight"))
 			return
 		}
@@ -138,17 +146,19 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		w.Header().Set("Access-Control-Allow-Methods", method+", OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", strings.Join(methods, ", ")+", OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
-	if r.Method != method {
-		w.Header().Set("Allow", method+", OPTIONS")
-		writeError(w, &apiError{Status: http.StatusMethodNotAllowed, Message: "Use " + method + " for this endpoint.", Type: "invalid_request_error", Code: "method_not_allowed"})
+	if !slices.Contains(methods, r.Method) {
+		w.Header().Set("Allow", strings.Join(methods, ", ")+", OPTIONS")
+		writeError(w, &apiError{Status: http.StatusMethodNotAllowed, Message: "Use " + strings.Join(methods, " or ") + " for this endpoint.", Type: "invalid_request_error", Code: "method_not_allowed"})
 		return
 	}
 	switch route {
+	case "/":
+		writeJSON(w, http.StatusOK, map[string]string{"engine": "aqtpserver", "model": modelID})
 	case "/health":
 		exists := executableExists(s.cfg.executable)
 		status := "ok"

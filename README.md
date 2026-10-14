@@ -125,6 +125,23 @@ tunnel, or port forwarding to other people.
 
 ## API
 
+### GET /
+
+```sh
+curl http://127.0.0.1:20203/
+```
+
+```json
+{"engine":"aqtpserver","model":"aquestalkplayer"}
+```
+
+Returns server information for OpenAI-compatible clients. The AITuber OnAir
+React examples use this response to show AquesTalkPlayer-specific hints.
+Only the exact path `/` serves this information; unknown paths return 404.
+`HEAD /` returns 200 with the JSON content type and no body. `OPTIONS /` supports
+CORS preflight for GET and HEAD. Other methods return 405. The same Host checks,
+CORS rules, and request logging apply as for the other endpoints.
+
 ### POST /v1/audio/speech
 
 ```sh

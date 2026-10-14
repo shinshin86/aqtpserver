@@ -194,6 +194,130 @@ func TestHostProtectionAndCORS(t *testing.T) {
 	}
 }
 
+func TestServerInfo(t *testing.T) {
+	cfg := defaultConfig("darwin")
+	cfg.executable = filepath.Join(t.TempDir(), "missing")
+	var logs bytes.Buffer
+	s := newServer(cfg, nil, log.New(&logs, "", 0))
+	for _, method := range []string{"GET", "HEAD"} {
+		for _, path := range []string{"/", "/?query=secret-query"} {
+			t.Run(method+path, func(t *testing.T) {
+				w := requestJSON(s, method, path, "")
+				if w.Code != 200 {
+					t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
+				}
+				for header, want := range map[string]string{
+					"Content-Type":           "application/json; charset=utf-8",
+					"Cache-Control":          "no-store",
+					"X-Content-Type-Options": "nosniff",
+					"Vary":                   "Origin",
+				} {
+					if got := w.Header().Get(header); got != want {
+						t.Errorf("%s=%q, want %q", header, got, want)
+					}
+				}
+				if method == "HEAD" {
+					if w.Body.Len() != 0 {
+						t.Fatalf("HEAD returned a body: %s", w.Body.String())
+					}
+					return
+				}
+				var info map[string]string
+				want := map[string]string{"engine": "aqtpserver", "model": "aquestalkplayer"}
+				if err := json.Unmarshal(w.Body.Bytes(), &info); err != nil || !reflect.DeepEqual(info, want) {
+					t.Fatalf("server info: %s, error=%v", w.Body.String(), err)
+				}
+			})
+		}
+	}
+	if strings.Contains(logs.String(), "secret") || strings.Count(logs.String(), "route=/ status=200 duration=") != 4 ||
+		!strings.Contains(logs.String(), `method="GET"`) || !strings.Contains(logs.String(), `method="HEAD"`) {
+		t.Fatalf("server info logs: %s", logs.String())
+	}
+}
+
+func TestServerInfoMethods(t *testing.T) {
+	s := newServer(defaultConfig("darwin"), nil, nil)
+	for _, method := range []string{"POST", "PUT", "PATCH", "DELETE", "TRACE", "CONNECT"} {
+		r := httptest.NewRequest(method, "/", nil)
+		r.Host = "localhost"
+		w := httptest.NewRecorder()
+		s.ServeHTTP(w, r)
+		checkAPIError(t, w, 405, "method_not_allowed", "")
+		if got := w.Header().Get("Allow"); got != "GET, HEAD, OPTIONS" {
+			t.Fatalf("%s: Allow=%q", method, got)
+		}
+	}
+	for _, method := range []string{"", "GET", "HEAD", "POST", "OPTIONS", "get"} {
+		t.Run("preflight_"+method, func(t *testing.T) {
+			r := httptest.NewRequest("OPTIONS", "http://localhost/", nil)
+			r.Header.Set("Origin", "http://localhost:5173")
+			r.Header.Set("Access-Control-Request-Method", method)
+			r.Header.Set("Access-Control-Request-Headers", "content-type, Authorization")
+			w := httptest.NewRecorder()
+			s.ServeHTTP(w, r)
+			if method != "" && method != "GET" && method != "HEAD" {
+				checkAPIError(t, w, 400, "invalid_preflight", "")
+				return
+			}
+			if w.Code != 204 || w.Body.Len() != 0 || w.Header().Get("Access-Control-Allow-Methods") != "GET, HEAD, OPTIONS" ||
+				w.Header().Get("Access-Control-Allow-Origin") != "http://localhost:5173" || w.Header().Get("Access-Control-Allow-Headers") != "Content-Type, Authorization" {
+				t.Fatalf("preflight: status=%d headers=%v body=%s", w.Code, w.Header(), w.Body.String())
+			}
+			if got := strings.Join(w.Header().Values("Vary"), ", "); got != "Origin, Access-Control-Request-Method, Access-Control-Request-Headers" {
+				t.Fatalf("preflight Vary=%q", got)
+			}
+		})
+	}
+	r := httptest.NewRequest("OPTIONS", "http://localhost/", nil)
+	r.Header.Set("Access-Control-Request-Headers", "X-Unsupported")
+	w := httptest.NewRecorder()
+	s.ServeHTTP(w, r)
+	checkAPIError(t, w, 400, "invalid_preflight", "")
+}
+
+func TestServerInfoHostAndCORS(t *testing.T) {
+	cfg := defaultConfig("darwin")
+	cfg.allowedOrigins = []string{"https://trusted.example"}
+	s := newServer(cfg, nil, nil)
+	for _, method := range []string{"GET", "HEAD", "OPTIONS"} {
+		for _, tc := range []struct{ host, origin, errorCode string }{
+			{"localhost:20203", "http://localhost:5173", ""},
+			{"127.0.0.1:20203", "app://desktop", ""},
+			{"[::1]:20203", "https://trusted.example", ""},
+			{"evil.example", "http://localhost:5173", "invalid_host"},
+			{"localhost:20203", "https://untrusted.example", "origin_not_allowed"},
+		} {
+			t.Run(method+tc.host+tc.origin, func(t *testing.T) {
+				r := httptest.NewRequest(method, "http://localhost/", nil)
+				r.Host = tc.host
+				r.Header.Set("Origin", tc.origin)
+				w := httptest.NewRecorder()
+				s.ServeHTTP(w, r)
+				if tc.errorCode != "" {
+					if w.Code != 403 || w.Header().Get("Access-Control-Allow-Origin") != "" {
+						t.Fatalf("disallowed request: status=%d headers=%v", w.Code, w.Header())
+					}
+					if method != "HEAD" {
+						checkAPIError(t, w, 403, tc.errorCode, "")
+					}
+				} else {
+					wantStatus := 200
+					if method == "OPTIONS" {
+						wantStatus = 204
+					}
+					if w.Code != wantStatus || w.Header().Get("Access-Control-Allow-Origin") != tc.origin {
+						t.Fatalf("allowed request: status=%d headers=%v", w.Code, w.Header())
+					}
+				}
+				if method == "HEAD" && w.Body.Len() != 0 {
+					t.Fatalf("HEAD returned a body: %s", w.Body.String())
+				}
+			})
+		}
+	}
+}
+
 func TestModelsHealthAndRouting(t *testing.T) {
 	cfg := defaultConfig("darwin")
 	cfg.executable, _ = os.Executable()
@@ -229,8 +353,21 @@ func TestModelsHealthAndRouting(t *testing.T) {
 			t.Fatal("missing Allow header")
 		}
 	}
-	w = requestJSON(s, "GET", "/missing", "")
-	checkAPIError(t, w, 404, "not_found", "")
+	for _, path := range []string{"/missing", "/v1", "/index.html", "//", "/./", "/health/"} {
+		for _, method := range []string{"GET", "HEAD", "OPTIONS"} {
+			w = requestJSON(s, method, path, "")
+			if w.Code != 404 {
+				t.Fatalf("%s %s: status=%d body=%s", method, path, w.Code, w.Body.String())
+			}
+			if method == "HEAD" {
+				if w.Body.Len() != 0 {
+					t.Fatalf("HEAD %s returned a body", path)
+				}
+			} else {
+				checkAPIError(t, w, 404, "not_found", "")
+			}
+		}
+	}
 }
 
 func TestHTTPErrorPropagationAndTimeout(t *testing.T) {

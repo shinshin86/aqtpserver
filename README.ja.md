@@ -127,6 +127,23 @@ aqtpserver --allowed-origin https://your-app.example
 
 ## API
 
+### GET /
+
+```sh
+curl http://127.0.0.1:20203/
+```
+
+```json
+{"engine":"aqtpserver","model":"aquestalkplayer"}
+```
+
+OpenAI 互換クライアント向けにサーバー情報を返します。AITuber OnAir の React
+サンプルは、この応答を使って AquesTalkPlayer 固有の案内を表示します。
+この情報を返すのはパスが `/` の場合のみで、未知のパスには 404 を返します。
+`HEAD /` は JSON の Content-Type と 200 を返し、本文は含めません。`OPTIONS /` は
+GET・HEAD の CORS プリフライトに対応し、他のメソッドには 405 を返します。
+Host 検証・CORS・リクエストログには、他の API と同じルールを適用します。
+
 ### POST /v1/audio/speech
 
 ```sh
